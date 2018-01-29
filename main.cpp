@@ -61,8 +61,8 @@ int main(int argc, char **argv) {
 
 	//Spawn turtle
 	 turtlesim::Spawn srv; //using Spawn.srv
- 	 srv.request.x = 4.0;
-  	 srv.request.y = 4.0;
+ 	 srv.request.x = 2.0;
+  	 srv.request.y = 2.0;
   	 srv.request.theta = 0;
 	 srv.request.name="wall1.";	
 	 bool success = spawnClient.call(req,resp);
