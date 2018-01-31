@@ -42,11 +42,12 @@ int main(int argc, char **argv) {
 	double speed, angular_speed;
 	double distance, angle;
 	bool isForward, clockwise;
+while(ros::ok()){
 
 	// Assign publishing and subscribing node
 	velocity_publisher = nh.advertise<geometry_msgs::Twist>("/turtle1/cmd_vel", 1000);
 	pose_subscriber = nh.subscribe("/turtle1/pose", 100, poseCallback);//call poseCallback everytime the turtle pose msg is published over the /turtle1/pose topic.
-	ros::Rate loop_rate(0.5);
+	ros::Rate loop_rate(1);
 	//	/turtle1/cmd_vel is the Topic name
 	//	/geometry_msgs::Twist is the msg type 
 	
@@ -55,25 +56,26 @@ int main(int argc, char **argv) {
 //--------------Spawn wall-----------------//
 //-----------------------------------------//
 
-/*	 ros::ServiceClient spawnClient = nh.serviceClient<turtlesim::Spawn>("spawn") ;
-	 turtlesim::Spawn::Request req ;
-	 turtlesim::Spawn::Response resp ;
+	 ros::ServiceClient spawnClient = nh.serviceClient<turtlesim::Spawn>("spawn") ;
+	 turtlesim::Spawn::Request req;
+	 turtlesim::Spawn::Response resp;
 
 	//Spawn turtle
 	 turtlesim::Spawn srv; //using Spawn.srv
- 	 srv.request.x = 2.0;
-  	 srv.request.y = 2.0;
-  	 srv.request.theta = 0;
-	 srv.request.name="wall1.";	
+ 	 req.x = 2.0;
+  	 req.y = 2.0;
+  	 req.theta = 0;
+	 req.name="wall";	
 	 bool success = spawnClient.call(req,resp);
-
+	 
+	
 	if(success){
 	ROS_INFO_STREAM("Spawned a turtle named "<<resp.name);
 	} else {
 	ROS_ERROR_STREAM(" Failed to spawn. ");
 	
 		}
-*/
+
 
 //-----------------------------------------//
 //--------------START TEST-----------------//
@@ -89,36 +91,14 @@ int main(int argc, char **argv) {
 	goal_pose.theta = 0;
 	cout<<"I'm here 1"<<endl;
 	
-	if(turtlesim_pose.x == 2 && turtlesim_pose.y == 2){
-	
-	geometry_msgs::Twist vel_msg;
-	   
-	//set a random linear velocity in the x-axis
-	vel_msg.linear.x = 0;
-	vel_msg.linear.y = 0;
-	vel_msg.linear.z = 0;
-	//set a random angular velocity in the y-axis
-	vel_msg.angular.x = 0;
-	vel_msg.angular.y = 0;
-	vel_msg.angular.z = 2;
-	
-	loop_rate.sleep();
-		
-	} else {
-	
-		moveGoal(goal_pose,0.02);
-		loop_rate.sleep();
-	
-		ros::spin();
-		ros::shutdown();
-		return 0;
-		}
 
 	moveGoal(goal_pose,0.02);		
 	loop_rate.sleep();
 	
 	ros::spin();
 	ros::shutdown();
+	}
+	
 	return 0;
 }
 
@@ -258,26 +238,40 @@ void poseCallback(const turtlesim::Pose::ConstPtr & pose_message){
 void moveGoal(turtlesim::Pose goal_pose, double distance_tolerance){
 	//We implement a Proportional Controller. We need to go from (x,y) to (x',y'). Then, linear velocity v' = K ((x'-x)^2 + (y'-y)^2)^0.5 where K is the constant and ((x'-x)^2 + (y'-y)^2)^0.5 is the Euclidian distance. The steering angle theta = tan^-1(y'-y)/(x'-x) is the angle between these 2 points.
 	geometry_msgs::Twist vel_msg;
+	turtlesim::Spawn::Request req;
 
-	ros::Rate loop_rate(100);
+	ros::Rate loop_rate(1000);
 	do{
 		//linear velocity 
-		vel_msg.linear.x = 1.4*getDistance(turtlesim_pose.x, turtlesim_pose.y, goal_pose.x, goal_pose.y);
+		vel_msg.linear.x = 0.1*getDistance(turtlesim_pose.x, turtlesim_pose.y, goal_pose.x, goal_pose.y);//0.05;
 		vel_msg.linear.y = 0;
 		vel_msg.linear.z = 0;
 		//angular velocity
 		vel_msg.angular.x = 0;
 		vel_msg.angular.y = 0;
-		vel_msg.angular.z = 3*(atan2(goal_pose.y - turtlesim_pose.y, goal_pose.x - turtlesim_pose.x)-turtlesim_pose.theta);
-
+		vel_msg.angular.z = 0.5*(atan2(goal_pose.y - turtlesim_pose.y, goal_pose.x - turtlesim_pose.x)-turtlesim_pose.theta);
+		
+			if(abs(turtlesim_pose.x - req.x) < 1 || abs(turtlesim_pose.y - req.y) < 1){
+			cout<<"Moving out"<<endl;
+			//linear velocity 
+			vel_msg.linear.x = 0.04*getDistance(turtlesim_pose.x, turtlesim_pose.y, goal_pose.x, goal_pose.y);//0.05;
+			vel_msg.linear.y = 0;
+			vel_msg.linear.z = 0;
+			//angular velocity
+			vel_msg.angular.x = 0;
+			vel_msg.angular.y = 0;
+			vel_msg.angular.z = 0.9*(atan2(req.y - turtlesim_pose.y, req.x - turtlesim_pose.x) - turtlesim_pose.theta);
+			}
+		
+				
 		velocity_publisher.publish(vel_msg);
-
+		
 		ros::spinOnce();
 		loop_rate.sleep();
 		cout<<"IM here 2"<<endl;
 
-	}while(getDistance(turtlesim_pose.x, turtlesim_pose.y, goal_pose.x, goal_pose.y)>distance_tolerance);
-	cout<<"Reached goal"<<endl;
+	}while(getDistance(turtlesim_pose.x, turtlesim_pose.y, goal_pose.x, goal_pose.y) > distance_tolerance);
+	cout << "I am at (" << goal_pose.x << "," << goal_pose.y<< ")" << endl;
 	vel_msg.linear.x = 0;
 	vel_msg.angular.z = 0;
 	velocity_publisher.publish(vel_msg);
@@ -291,5 +285,4 @@ void moveGoal(turtlesim::Pose goal_pose, double distance_tolerance){
 double getDistance(double x1, double y1, double x2, double y2){
 	return sqrt(pow((x2-x1),2) + pow((y2-y1),2));
 }
-
 
