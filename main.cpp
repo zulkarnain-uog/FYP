@@ -11,6 +11,7 @@
 #include "turtlesim/Pose.h"
 #include <sstream>
 #include <turtlesim/Spawn.h>
+#include <cstdlib>
 
 using namespace std;
 
@@ -56,26 +57,42 @@ while(ros::ok()){
 //--------------Spawn wall-----------------//
 //-----------------------------------------//
 
-	 ros::ServiceClient spawnClient = nh.serviceClient<turtlesim::Spawn>("spawn") ;
-	 turtlesim::Spawn::Request req;
-	 turtlesim::Spawn::Response resp;
-
-	//Spawn turtle
-	 turtlesim::Spawn srv; //using Spawn.srv
- 	 req.x = 2.0;
-  	 req.y = 2.0;
-  	 req.theta = 0;
-	 req.name="wall";	
-	 bool success = spawnClient.call(req,resp);
-	 
 	
+	char count [] = { 'z', 'a', 'b', 'c', 'd', 'e', 'f','g', 'h', 'i', '\0' }; 
+	
+	int j;	
+	cout << "Number of obstacles: " << endl;
+	cin >> j;
+
+	for(int i = 0; i < j; i++){
+	int x_pose;
+	int y_pose;
+	cout << "Key in x-coordinate: " << endl;
+	cin >> x_pose;
+	cout << "Key in y-coordinate: " << endl;
+	cin >> y_pose;
+	
+	
+	ros::ServiceClient spawnClient = nh.serviceClient<turtlesim::Spawn>("spawn");
+	turtlesim::Spawn::Request req;
+	turtlesim::Spawn::Response resp;
+	turtlesim::Spawn srv; //using Spawn.srv
+ 	 req.x = x_pose;
+  	 req.y = y_pose;
+  	 req.theta = 0;
+	 req.name = count[0 + i];	
+	 spawnClient.call(req,resp);
+	}
+
+/*	 
 	if(success){
-	ROS_INFO_STREAM("Spawned a turtle named "<<resp.name);
+	ROS_INFO_STREAM("Spawned a "<<resp.name);
 	} else {
 	ROS_ERROR_STREAM(" Failed to spawn. ");
-	
+	;
 		}
-
+	}
+*/
 
 //-----------------------------------------//
 //--------------START TEST-----------------//
@@ -108,7 +125,7 @@ while(ros::ok()){
 
 
 
-
+/*
 //-----------------------------------------//
 //-------------Moving object---------------//
 //-----------------------------------------//
@@ -211,7 +228,7 @@ double setDesiredOrientation(double desired_angle_radians)
 	//cout<<desired_angle_radians <<","<<turtlesim_pose.theta<<","<<relative_angle_radians<<","<<clockwise<<endl;
 	rotate (abs(relative_angle_radians), abs(relative_angle_radians), clockwise);
 }
-
+*/
 //-----------------------------------------//
 //------------Update position--------------//
 //-----------------------------------------//
@@ -239,7 +256,6 @@ void moveGoal(turtlesim::Pose goal_pose, double distance_tolerance){
 	//We implement a Proportional Controller. We need to go from (x,y) to (x',y'). Then, linear velocity v' = K ((x'-x)^2 + (y'-y)^2)^0.5 where K is the constant and ((x'-x)^2 + (y'-y)^2)^0.5 is the Euclidian distance. The steering angle theta = tan^-1(y'-y)/(x'-x) is the angle between these 2 points.
 	geometry_msgs::Twist vel_msg;
 	turtlesim::Spawn::Request req;
-
 	ros::Rate loop_rate(1000);
 	do{
 		//linear velocity 
@@ -252,7 +268,7 @@ void moveGoal(turtlesim::Pose goal_pose, double distance_tolerance){
 		vel_msg.angular.z = 0.5*(atan2(goal_pose.y - turtlesim_pose.y, goal_pose.x - turtlesim_pose.x)-turtlesim_pose.theta);
 		
 			if(abs(turtlesim_pose.x - req.x) < 1 || abs(turtlesim_pose.y - req.y) < 1){
-			cout<<"Moving out"<<endl;
+			cout<<"wall detected"<<endl;
 			//linear velocity 
 			vel_msg.linear.x = 0.04*getDistance(turtlesim_pose.x, turtlesim_pose.y, goal_pose.x, goal_pose.y);//0.05;
 			vel_msg.linear.y = 0;
@@ -263,7 +279,8 @@ void moveGoal(turtlesim::Pose goal_pose, double distance_tolerance){
 			vel_msg.angular.z = 0.9*(atan2(req.y - turtlesim_pose.y, req.x - turtlesim_pose.x) - turtlesim_pose.theta);
 			}
 		
-				
+		cout << "My x difference: " << abs(turtlesim_pose.x - req.x) << endl;	
+		cout << "My y difference: " << abs(turtlesim_pose.y - req.y) << endl;		
 		velocity_publisher.publish(vel_msg);
 		
 		ros::spinOnce();
